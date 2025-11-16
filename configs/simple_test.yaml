@@ -1,0 +1,44 @@
+# Test configuration
+test_name: "simple_throughput_test"
+description: "Basic throughput test with one topic and shared subscription"
+
+danube:
+  service_url: "127.0.0.1:6650"
+
+execution:
+  duration: "2m"
+  warmup_duration: "5s"
+  cooldown_duration: "3s"
+
+topics:
+  - name: "/default/load_simple_test"
+    partitions: 0
+    schema_type: "string"
+    dispatch_strategy: "non_reliable"
+
+producers:
+  - name: "test_producers"
+    topic: "/default/load_simple_test"
+    count: 3
+    rate_per_second: 100
+    message_size: 256
+
+consumers:
+  - name: "test_consumers"
+    topic: "/default/load_simple_test"
+    subscription: "sub_shared"
+    subscription_type: "shared"
+    count: 3
+
+metrics:
+  enabled: true
+  report_interval: "5s"
+  percentiles: [50, 95, 99]
+  output_format: "terminal"
+  export_path: "./results"
+  collect:
+    - producer_throughput
+    - consumer_throughput
+    - end_to_end_latency
+    - producer_latency
+    - error_rates

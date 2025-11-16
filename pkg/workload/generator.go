@@ -1,0 +1,58 @@
+package workload
+
+import (
+	"encoding/json"
+	"fmt"
+	"math/rand"
+	"strings"
+	"time"
+)
+
+type PayloadSpec struct {
+	SchemaType  string
+	MessageSize int
+}
+
+// GeneratePayload returns a byte slice appropriate for the schema type.
+// MVP: simple synthetic payloads.
+func GeneratePayload(spec PayloadSpec, seq uint64) []byte {
+	switch strings.ToLower(spec.SchemaType) {
+	case "string":
+		// Embed seq and timestamp header for E2E latency measurement
+		now := time.Now().UnixMilli()
+		header := fmt.Sprintf("SEQ:%d;TS:%d;", seq, now)
+		sz := spec.MessageSize
+		if sz <= 0 {
+			sz = 64
+		}
+		// pad with random content to approximate desired size
+		padLen := sz - len(header)
+		if padLen < 0 {
+			padLen = 0
+		}
+		return []byte(header + randString(padLen))
+	case "json":
+		m := map[string]interface{}{
+			"seq":       seq,
+			"ts_unixms": time.Now().UnixMilli(),
+			"msg":       randString(16),
+		}
+		b, _ := json.Marshal(m)
+		return b
+	case "int64", "number":
+		// Send an incrementing number as ASCII bytes
+		return []byte(fmt.Sprintf("%d", seq))
+	default:
+		return []byte("unsupported_schema")
+	}
+}
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+func randString(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
+}
