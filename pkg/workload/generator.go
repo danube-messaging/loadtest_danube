@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
-	"time"
 )
 
 type PayloadSpec struct {
@@ -18,9 +17,8 @@ type PayloadSpec struct {
 func GeneratePayload(spec PayloadSpec, seq uint64) []byte {
 	switch strings.ToLower(spec.SchemaType) {
 	case "string":
-		// Embed seq and timestamp header for E2E latency measurement
-		now := time.Now().UnixMilli()
-		header := fmt.Sprintf("SEQ:%d;TS:%d;", seq, now)
+		// Embed only seq header; latency is measured via publish time
+		header := fmt.Sprintf("SEQ:%d;", seq)
 		sz := spec.MessageSize
 		if sz <= 0 {
 			sz = 64
@@ -33,9 +31,8 @@ func GeneratePayload(spec PayloadSpec, seq uint64) []byte {
 		return []byte(header + randString(padLen))
 	case "json":
 		m := map[string]interface{}{
-			"seq":       seq,
-			"ts_unixms": time.Now().UnixMilli(),
-			"msg":       randString(16),
+			"seq": seq,
+			"msg": randString(16),
 		}
 		b, _ := json.Marshal(m)
 		return b

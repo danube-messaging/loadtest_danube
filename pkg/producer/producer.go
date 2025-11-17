@@ -133,7 +133,10 @@ func (p *Pool) runWorker(ctx context.Context, _ any, pg config.ProducerGroup, id
 		}
 		seq++
 		payload := workload.GeneratePayload(pspec, seq)
-		if _, err := producer.Send(ctx, payload, nil); err != nil {
+		attrs := map[string]string{
+			"seq": fmt.Sprintf("%d", seq),
+		}
+		if _, err := producer.Send(ctx, payload, attrs); err != nil {
 			p.metrics.IncError(1)
 			log.Printf("send error topic=%s worker=%d: %v", pg.Topic, idx, err)
 			// small backoff to avoid hot loop on error

@@ -13,7 +13,7 @@ import (
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	if err := Execute(); err != nil {
+	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -21,10 +21,6 @@ func main() {
 var rootCmd = &cobra.Command{
 	Use:   "loadtest",
 	Short: "Load testing tool for Danube",
-}
-
-func Execute() error {
-	return rootCmd.Execute()
 }
 
 func init() {

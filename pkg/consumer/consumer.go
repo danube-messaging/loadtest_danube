@@ -2,7 +2,6 @@ package consumer
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -92,14 +91,7 @@ func (p *Pool) runWorker(ctx context.Context, cg config.ConsumerGroup, idx int) 
 		return
 	}
 
-	// Determine schema type from topic config for latency parsing
-	schemaType := ""
-	for i := range p.cfg.Topics {
-		if p.cfg.Topics[i].Name == cg.Topic {
-			schemaType = p.cfg.Topics[i].SchemaType
-			break
-		}
-	}
+	// Latency no longer depends on schema; use PublishTime only
 	for {
 		select {
 		case <-ctx.Done():
@@ -108,45 +100,18 @@ func (p *Pool) runWorker(ctx context.Context, cg config.ConsumerGroup, idx int) 
 			if !ok {
 				return
 			}
-			payload := msg.GetPayload()
-			// Compute E2E latency when possible (string/json)
+			// Use broker/client PublishTime for E2E latency
 			nowMs := time.Now().UnixMilli()
-			switch strings.ToLower(schemaType) {
-			case "json":
-				var m map[string]interface{}
-				if err := json.Unmarshal(payload, &m); err == nil {
-					if v, ok := m["ts_unixms"]; ok {
-						switch t := v.(type) {
-						case float64:
-							lat := float64(nowMs) - t
-							if lat >= 0 {
-								p.metrics.RecordLatency(lat)
-							}
-						case int64:
-							lat := float64(nowMs - t)
-							if lat >= 0 {
-								p.metrics.RecordLatency(lat)
-							}
-						}
-					}
-				}
-			case "string":
-				s := string(payload)
-				// expect prefix SEQ:<n>;TS:<ms>;
-				// find TS:
-				if i := strings.Index(s, "TS:"); i >= 0 {
-					rest := s[i+3:]
-					if j := strings.Index(rest, ";"); j >= 0 {
-						tsStr := rest[:j]
-						if tsVal, err := parseInt64(tsStr); err == nil {
-							lat := float64(nowMs - tsVal)
-							if lat >= 0 {
-								p.metrics.RecordLatency(lat)
-							}
-						}
-					}
+			if pub := msg.GetPublishTime(); pub > 0 {
+				lat := float64(nowMs) - float64(pub)
+				if lat >= 0 {
+					p.metrics.RecordLatency(lat)
 				}
 			}
+
+			// TODO: parse attributes if needed for additional metrics
+			_ = msg.GetAttributes()
+
 			p.metrics.IncReceived(1)
 			if _, err := cons.Ack(ctx, msg); err != nil {
 				log.Printf("ack error topic=%s worker=%d: %v", cg.Topic, idx, err)
@@ -167,24 +132,4 @@ func mapSubType(s string) danube.SubType {
 	default:
 		return danube.Exclusive
 	}
-}
-
-// parseInt64 parses a base-10 int64 from string.
-func parseInt64(s string) (int64, error) {
-	var n int64
-	var neg bool
-	for i, r := range s {
-		if i == 0 && r == '-' {
-			neg = true
-			continue
-		}
-		if r < '0' || r > '9' {
-			return 0, fmt.Errorf("invalid digit")
-		}
-		n = n*10 + int64(r-'0')
-	}
-	if neg {
-		n = -n
-	}
-	return n, nil
 }
