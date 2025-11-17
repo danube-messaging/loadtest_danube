@@ -62,7 +62,7 @@ func printSummary(cfg *config.Config, snap metrics.Snapshot, dur time.Duration) 
 			}
 		}
 	}
-	log.Println("==============================\n")
+	log.Println("==============================")
 }
 
 // exportResults writes a JSON file with snapshot and run description if ExportPath is configured
