@@ -134,7 +134,8 @@ func (p *Pool) runWorker(ctx context.Context, _ any, pg config.ProducerGroup, id
 		seq++
 		payload := workload.GeneratePayload(pspec, seq)
 		attrs := map[string]string{
-			"seq": fmt.Sprintf("%d", seq),
+			"seq":      fmt.Sprintf("%d", seq),
+			"producer": prodName,
 		}
 		if _, err := producer.Send(ctx, payload, attrs); err != nil {
 			p.metrics.IncError(1)

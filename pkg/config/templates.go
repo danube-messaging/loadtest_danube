@@ -23,7 +23,7 @@ producers:
   - name: "test_producers"
     topic: "/default/test"
     count: 3
-    rate_per_second: 100
+    rate_per_second: 50
     message_size: 256
 
 consumers:

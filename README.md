@@ -19,6 +19,7 @@ Check the CLI:
 ./bin/loadtest --help
 ./bin/loadtest init --template simple  # writes configs/simple_test.yaml
 ./bin/loadtest init --template stress  # writes configs/stress_test.yaml
+./bin/loadtest init --template patterns  # writes configs/patterns_test.yaml
 ```
 
 ## Quick Start
@@ -85,7 +86,7 @@ metrics:
 - `partitions`: integer >= 0
   - Non-zero uses `WithPartitions(int32(partitions))` on producer.
 - `schema_type`:
-  - `string`: producer sets a string schema, payload embeds SEQ/TS for latency.
+  - `string`: simple string payloads.
   - `json`: producer sets a JSON schema (must provide `json_schema`).
   - `int64` or `number`: numeric messages.
 - `dispatch_strategy`:
@@ -106,12 +107,16 @@ metrics:
 ## What Metrics Are Reported
 - Messages sent, received, errors
 - Throughput (tx/rx msgs/sec)
-- End-to-end latency (ms): p50, p95, p99, max, sample count
+- End-to-end latency (ms): p50, p95, p99, max, sample count (computed from message PublishTime)
+- Integrity: estimated message loss and duplicate counts per (topic, subscription, producer)
 
 Notes:
-- E2E latency is computed when possible via embedded timestamps in payloads:
-  - string: `SEQ:<n>;TS:<ms>;...`
-  - json: `{ "seq": <n>, "ts_unixms": <ms>, ... }`
+- Latency uses broker/client `PublishTime`; payloads no longer embed timestamps.
+- Sequence numbers are attached as message attributes (e.g., `seq` and `producer`) for integrity tracking.
+
+### Results Export (optional)
+- Set `metrics.export_path: "./results"` in your config to also write a JSON file with the final snapshot and a summary of the config.
+- The export includes integrity breakdown entries per (topic, subscription, producer) and stable JSON keys for easy diffing.
 
 ## Common Scenarios
 
@@ -123,6 +128,11 @@ Notes:
 2) Reliable dispatch with partitions
 ```bash
 ./bin/loadtest run --config configs/stress_test.yaml
+```
+
+3) Patterns coverage (mixed schemas, partitions, and subs)
+```bash
+./bin/loadtest run --config configs/patterns_test.yaml
 ```
 
 

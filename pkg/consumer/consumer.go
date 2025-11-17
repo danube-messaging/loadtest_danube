@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -108,10 +109,15 @@ func (p *Pool) runWorker(ctx context.Context, cg config.ConsumerGroup, idx int) 
 					p.metrics.RecordLatency(lat)
 				}
 			}
-
-			// TODO: parse attributes if needed for additional metrics
-			_ = msg.GetAttributes()
-
+			// Track sequences per topic+subscription+producer using message attributes
+			if attrs := msg.GetAttributes(); attrs != nil {
+				if seqStr, ok := attrs["seq"]; ok {
+					if seqVal, err := strconv.ParseUint(seqStr, 10, 64); err == nil {
+						prod := attrs["producer"]
+						p.metrics.RecordSeq(cg.Topic, cg.Subscription, prod, seqVal)
+					}
+				}
+			}
 			p.metrics.IncReceived(1)
 			if _, err := cons.Ack(ctx, msg); err != nil {
 				log.Printf("ack error topic=%s worker=%d: %v", cg.Topic, idx, err)

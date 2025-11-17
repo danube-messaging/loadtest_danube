@@ -1,0 +1,136 @@
+# Test configuration
+test_name: "patterns_test"
+description: "Covers multiple topic patterns: partitions, schemas, and subscription mixes"
+
+# Danube broker connection
+danube:
+  service_url: "127.0.0.1:6650"
+
+# Test execution parameters
+execution:
+  duration: "2m"
+  warmup_duration: "5s"
+  cooldown_duration: "3s"
+
+# Topic definitions
+# 1) no partitions, int64, non_reliable
+# 2) 3 partitions, json, non_reliable
+# 3) no partitions, string, reliable
+# 4) 3 partitions, string, reliable (single shared sub scenario)
+# 5) 3 partitions, string, reliable (shared + exclusive)
+topics:
+  - name: "/default/pattern_1"
+    partitions: 0
+    schema_type: "int64"
+    dispatch_strategy: "non_reliable"
+
+  - name: "/default/pattern_2"
+    partitions: 3
+    schema_type: "json"
+    dispatch_strategy: "non_reliable"
+    json_schema: |
+      {"type":"object","properties":{"seq":{"type":"integer"},"msg":{"type":"string"}},"required":["seq","msg"]}
+
+  - name: "/default/pattern_3"
+    partitions: 0
+    schema_type: "string"
+    dispatch_strategy: "reliable"
+
+  - name: "/default/pattern_4"
+    partitions: 3
+    schema_type: "string"
+    dispatch_strategy: "reliable"
+
+  - name: "/default/pattern_5"
+    partitions: 3
+    schema_type: "string"
+    dispatch_strategy: "reliable"
+
+# Producers
+producers:
+  # 1) int64 non_reliable - 1 producer
+  - name: "pattern_1_prod"
+    topic: "/default/pattern_1"
+    count: 1
+    rate_per_second: 20
+    message_size: 32
+
+  # 2) json non_reliable - 2 producers
+  - name: "pattern_2_prod"
+    topic: "/default/pattern_2"
+    count: 2
+    rate_per_second: 15
+    message_size: 256
+
+  # 3) string reliable (no partitions) - 1 producer
+  - name: "pattern_3_prod"
+    topic: "/default/pattern_3"
+    count: 1
+    rate_per_second: 20
+    message_size: 128
+
+  # 4) string reliable (3 partitions) - 1 producer
+  - name: "pattern_4_prod"
+    topic: "/default/pattern_4"
+    count: 1
+    rate_per_second: 20
+    message_size: 128
+
+  # 5) string reliable (3 partitions) - 2 producers
+  - name: "pattern_5_prod"
+    topic: "/default/pattern_5"
+    count: 2
+    rate_per_second: 15
+    message_size: 128
+
+# Consumers
+consumers:
+  # 1) int64 non_reliable: two subscriptions (shared and exclusive)
+  - name: "c_pattern_1_shared"
+    topic: "/default/pattern_1"
+    subscription: "s_pattern_1_shared_1"
+    subscription_type: "shared"
+    count: 2
+  - name: "c_pattern_1_excl_1"
+    topic: "/default/pattern_1"
+    subscription: "s_pattern_1_excl_1"
+    subscription_type: "exclusive"
+    count: 1
+
+  # 2) json non_reliable: one shared subscription with 3 consumers
+  - name: "c_pattern_2_shared"
+    topic: "/default/pattern_2"
+    subscription: "s_pattern_2_shared_1"
+    subscription_type: "shared"
+    count: 3
+
+  # 3) string reliable (no partitions): shared(2) + exclusive(1)
+  - name: "c_pattern_3_shared"
+    topic: "/default/pattern_3"
+    subscription: "s_pattern_3_shared_1"
+    subscription_type: "shared"
+    count: 2
+  - name: "c_pattern_3_excl_1"
+    topic: "/default/pattern_3"
+    subscription: "s_pattern_3_excl_1"
+    subscription_type: "exclusive"
+    count: 1
+
+  # 4) string reliable (3 partitions): one shared subscription with 3 consumers
+  - name: "c_pattern_4_shared"
+    topic: "/default/pattern_4"
+    subscription: "s_pattern_4_shared_1"
+    subscription_type: "shared"
+    count: 3
+
+  # 5) string reliable (3 partitions): shared(2) + exclusive(1)
+  - name: "c_pattern_5_shared"
+    topic: "/default/pattern_5"
+    subscription: "s_pattern_5_shared_1"
+    subscription_type: "shared"
+    count: 2
+  - name: "c_pattern_5_excl_1"
+    topic: "/default/pattern_5"
+    subscription: "s_pattern_5_excl_1"
+    subscription_type: "exclusive"
+    count: 1

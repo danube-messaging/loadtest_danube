@@ -55,19 +55,9 @@ func Run(cfg *config.Config) error {
 		case <-ctx.Done():
 			wg.Wait()
 			snap := m.Snapshot()
-			// Pretty summary
-			log.Println("\n===== Load Test Summary =====")
-			log.Printf("Test:        %s", cfg.TestName)
-			log.Printf("Broker:      %s", cfg.Danube.ServiceURL)
-			log.Printf("Duration:    %s (elapsed %.1fs)", dur, snap.ElapsedSec)
-			log.Printf("Messages:    sent=%d  received=%d  errors=%d", snap.MessagesSent, snap.MessagesReceived, snap.Errors)
-			log.Printf("Throughput:  tx=%.1f msg/s  rx=%.1f msg/s", snap.ThroughputSent, snap.ThroughputRecv)
-			if snap.LatencySamples > 0 {
-				log.Printf("Latency(ms): p50=%.1f  p95=%.1f  p99=%.1f  max=%.1f  samples=%d", snap.LatencyP50Ms, snap.LatencyP95Ms, snap.LatencyP99Ms, snap.LatencyMaxMs, snap.LatencySamples)
-			} else {
-				log.Printf("Latency(ms): no samples (enable string/json payloads to measure)")
-			}
-			log.Println("==============================\n")
+			// Pretty summary and optional export delegated to helpers
+			printSummary(cfg, snap, dur)
+			exportResults(cfg, snap)
 			return nil
 		case <-ticker.C:
 			snap := m.Snapshot()
